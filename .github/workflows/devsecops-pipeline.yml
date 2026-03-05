@@ -1,0 +1,50 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ── SAST : Analyse du code source ──
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/java
+        continue-on-error: true
+
+  # ── Scan des images Docker ──
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'springcommunity/spring-petclinic-api-gateway'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+        continue-on-error: true
+
+  # ── OWASP Dependency Check ──
+  owasp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'spring-petclinic'
+          path: '.'
+          format: 'HTML'
+        continue-on-error: true
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-report
+          path: reports/
